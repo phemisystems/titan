@@ -1,0 +1,130 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.thinkaurelius.titan</groupId>
+        <artifactId>titan-accumulo-parent</artifactId>
+        <version>0.9.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <artifactId>titan-accumulo-core</artifactId>
+    <name>Titan-Accumulo: Core DiskStorage Implementation</name>
+    <url>http://thinkaurelius.github.com/titan/</url>
+    
+    <properties>
+        <accumulo.version>1.7.0</accumulo.version>
+        <hadoop.version>2.6.0</hadoop.version>
+<!--  
+        <hadoop.profile>2.0</hadoop.profile>
+        <hbase096.version.base>0.96.1.1</hbase096.version.base>
+        <jruby.version>1.6.8</jruby.version>
+        <top.level.basedir>${project.parent.parent.basedir}</top.level.basedir>
+-->
+    </properties>
+    
+    <dependencies>
+        <dependency>
+            <groupId>com.thinkaurelius.titan</groupId>
+            <artifactId>titan-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.accumulo</groupId>
+            <artifactId>accumulo-core</artifactId>
+            <version>${accumulo.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.accumulo</groupId>
+            <artifactId>accumulo-server-base</artifactId>
+            <version>${accumulo.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>${hadoop.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+    </dependencies>
+    
+    <build>
+        <sourceDirectory>src/main/java</sourceDirectory>
+        <plugins>
+            <plugin>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-deploy</id>
+                        <phase>none</phase>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>pack-test-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+<!--
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-test</id>
+                        <phase>none</phase>
+                    </execution>
+                    <execution>
+                        <id>tinkerpop-test</id>
+                        <phase>none</phase>
+                    </execution>
+                </executions>
+            </plugin>
+-->
+        </plugins>
+    </build>
+    
+    <profiles>
+        <profile>
+            <id>hadoop2</id>
+
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>hadoop.profile</name>
+                    <value>2.0</value>
+                </property>
+            </activation>
+
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-hdfs</artifactId>
+                    <version>${hadoop.version}</version>
+                    <optional>true</optional>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-client</artifactId>
+                    <version>${hadoop.version}</version>
+                    <optional>true</optional>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+</project>

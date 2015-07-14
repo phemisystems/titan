@@ -77,6 +77,7 @@
         <hbase096.version>${hbase096.core.version}-hadoop2</hbase096.version>
         <hbase098.core.version>0.98.8</hbase098.core.version>
         <hbase098.version>${hbase098.core.version}-hadoop2</hbase098.version>
+        <accumulo.version>1.7.0</accumulo.version>
         <jackson1.version>1.9.2</jackson1.version>
         <jackson2.version>2.2.3</jackson2.version>
         <!-- ES depends on Lucene.  This ES dependency can affect the
@@ -119,6 +120,7 @@
         <module>titan-cassandra</module>
         <module>titan-hadoop-parent</module>
         <module>titan-hbase-parent</module>
+        <module>titan-accumulo-parent</module>
         <module>titan-es</module>
         <module>titan-lucene</module>
         <module>titan-rexster</module>
