@@ -3,7 +3,7 @@
     <parent>
         <groupId>com.thinkaurelius.titan</groupId>
         <artifactId>titan-accumulo-parent</artifactId>
-        <version>0.9.0-SNAPSHOT</version>
+        <version>0.5.5-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>titan-accumulo-core</artifactId>
@@ -12,7 +12,7 @@
     
     <properties>
         <accumulo.version>1.7.0</accumulo.version>
-        <hadoop.version>2.6.0</hadoop.version>
+        <hadoop.version>2.2.0</hadoop.version>
 <!--  
         <hadoop.profile>2.0</hadoop.profile>
         <hbase096.version.base>0.96.1.1</hbase096.version.base>

@@ -48,6 +48,10 @@
                     <artifactId>asm</artifactId>
                     <groupId>asm</groupId>
                 </exclusion>
+                <exclusion>
+                    <artifactId>hbase-annotations</artifactId>
+                    <groupId>org.apache.hbase</groupId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -67,6 +71,10 @@
                 <exclusion>
                     <artifactId>asm</artifactId>
                     <groupId>asm</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>hbase-annotations</artifactId>
+                    <groupId>org.apache.hbase</groupId>
                 </exclusion>
             </exclusions>
         </dependency>

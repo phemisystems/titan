@@ -3,12 +3,12 @@
     <parent>
         <groupId>com.thinkaurelius.titan</groupId>
         <artifactId>titan</artifactId>
-        <version>0.9.0-SNAPSHOT</version>
+        <version>0.5.5-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>titan-accumulo-parent</artifactId>
     <packaging>pom</packaging>
-    <name>Titan-HBase: Parent Module</name>
+    <name>Titan-Accumulo: Parent Module</name>
     <url>http://thinkaurelius.github.com/titan/</url>
     
     <modules>
