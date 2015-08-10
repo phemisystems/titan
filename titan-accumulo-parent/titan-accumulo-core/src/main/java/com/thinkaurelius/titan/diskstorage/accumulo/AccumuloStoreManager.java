@@ -1,6 +1,7 @@
 package com.thinkaurelius.titan.diskstorage.accumulo;
 
 import com.google.common.base.Joiner;
+import com.google.common.util.concurrent.Uninterruptibles;
 import com.thinkaurelius.titan.diskstorage.BackendException;
 import com.thinkaurelius.titan.diskstorage.BaseTransactionConfig;
 import com.thinkaurelius.titan.diskstorage.Entry;
@@ -73,6 +74,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -162,7 +164,8 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
         skipSchemaCheck = storageConfig.get(SKIP_SCHEMA_CHECK);
         clientConf = loadClientConfig(storageConfig);
         accInstance = new ZooKeeperInstance(clientConf);
-        scanAuths = new Authorizations(storageConfig.get(AUTHS).split(","));
+        logger.debug("StorageConfig.has(AUTHS) ? " + storageConfig.has(AUTHS));
+        scanAuths = storageConfig.has(AUTHS) ? new Authorizations(storageConfig.get(AUTHS).split(",")) : Authorizations.EMPTY;
         numScanThreads = storageConfig.get(NUM_SCAN_THREADS);
         tableTtl = storageConfig.get(TABLE_TTL);
         storeTtls = new HashMap<String,IteratorSetting>();
@@ -184,6 +187,7 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
         ClientConfiguration clientConf;
         String clientConfFile = storageConfig.get(CLIENT_CONF_FILE);
         if (CLIENT_CONF_FILE_DEFAULT.equals(clientConfFile)) {
+            logger.debug("No client config file specified, looking for defaults");
             clientConf = ClientConfiguration.loadDefault();
         } else {
             try {
@@ -192,6 +196,7 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
                 throw new PermanentBackendException("Unable to load client configuration from " + clientConfFile, ce);
             }
         }
+        logger.debug("Overlaying custom properties from " + ACCUMULO_CONFIGURATION_NAMESPACE);
         // Overlay custom properties
         Map<String,Object> configSub = storageConfig.getSubset(ACCUMULO_CONFIGURATION_NAMESPACE);
         for (Map.Entry<String,Object> entry : configSub.entrySet()) {
@@ -234,29 +239,13 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
     public KeyColumnValueStore openDatabase(String longName, int ttlInSeconds) throws BackendException {
         AccumuloKeyColumnValueStore store = openStores.get(longName);
         TableOperations tableOps = newConnector().tableOperations();
+        ensureTableExists(tableOps);
         if (store == null) {
             AccumuloKeyColumnValueStore newStore = new AccumuloKeyColumnValueStore(this, longName);
 
             store = openStores.putIfAbsent(longName, newStore); // nothing bad happens if we lose to other thread
 
             if (store == null) {
-                if (!skipSchemaCheck) {
-                    try {
-                        tableOps.create(tableName, new NewTableConfiguration().withoutDefaultIterators());
-                        IteratorSetting ttlSetting = new IteratorSetting(20, "AgeOffFilter",
-                                "org.apache.accumulo.core.iterators.user.AgeOffFilter");
-                        ttlSetting.addOption("ttl", Long.toString(tableTtl));
-                        tableOps.attachIterator(tableName, ttlSetting, EnumSet.allOf(IteratorUtil.IteratorScope.class));
-                    } catch (AccumuloException ae) {
-                        throw new PermanentBackendException("Error connecting to Accumulo", ae);
-                    } catch (AccumuloSecurityException ase) {
-                        throw new PermanentBackendException("Credentials failure creating table " + tableName, ase);
-                    } catch (TableExistsException ignore) {
-                        logger.info("Table {} exists.", tableName);
-                    } catch (TableNotFoundException tnfe) {
-                        logger.info("Unable to set TTL on table " + tableName, tnfe);
-                    }
-                }
                 try {
                     synchronized (this) {
                         Map<String, Set<Text>> localityGroups = tableOps.getLocalityGroups(tableName);
@@ -290,6 +279,26 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
         }
 
         return store;
+    }
+
+    private void ensureTableExists(TableOperations tableOps) throws PermanentBackendException {
+        if (!skipSchemaCheck) {
+            try {
+                tableOps.create(tableName, new NewTableConfiguration().withoutDefaultIterators());
+                IteratorSetting ttlSetting = new IteratorSetting(20, "AgeOffFilter",
+                    "org.apache.accumulo.core.iterators.user.AgeOffFilter");
+                ttlSetting.addOption("ttl", Long.toString(tableTtl));
+                tableOps.attachIterator(tableName, ttlSetting, EnumSet.allOf(IteratorUtil.IteratorScope.class));
+            } catch (AccumuloException ae) {
+                throw new PermanentBackendException("Error connecting to Accumulo", ae);
+            } catch (AccumuloSecurityException ase) {
+                throw new PermanentBackendException("Credentials failure creating table " + tableName, ase);
+            } catch (TableExistsException ignore) {
+                logger.trace("Table {} already exists.", tableName);
+            } catch (TableNotFoundException tnfe) {
+                logger.info("Unable to set TTL on table " + tableName, tnfe);
+            }
+        }
     }
 
     @Override
@@ -371,6 +380,9 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
 
     @Override
     public StoreFeatures getFeatures() {
+        // It appears that this method is being called every five seconds. So maybe optimize
+        // all the heavy RPCs? (eg. loading tablet locations, sending a probably-unnecessary
+        // createTable command etc.)
         Configuration c = GraphDatabaseConfiguration.buildConfiguration();
 
         StandardStoreFeatures.Builder fb = new StandardStoreFeatures.Builder()
@@ -380,6 +392,7 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
                 .keyConsistent(c);
 
         try {
+            ensureTableExists(newConnector().tableOperations());
             fb.localKeyPartition(getDeployment() == Deployment.LOCAL);
         } catch (Exception e) {
             logger.warn("Unexpected exception during getDeployment()", e);
@@ -448,6 +461,9 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
         Connector accConn = newConnector();
         Map<String, String> tableIdByName = accConn.tableOperations().tableIdMap();
         String tableId = tableIdByName.get(tableName);
+        if (tableId == null) {
+            throw new PermanentBackendException("Table " + tableName + " does not exist.");
+        }
         Map<String,Map<KeyExtent,List<Range>>> binnedRanges = new HashMap<String,Map<KeyExtent,List<Range>>>();
         List<Range> failures = new LinkedList<Range>();
         try {
@@ -545,7 +561,7 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
         private boolean wholeRow;
 
         ScanConfig(Text colFam) {
-            colFam = new Text(colFam);
+            this.colFam = new Text(colFam);
         }
 
         ScanConfig onlyLatestVersion() {

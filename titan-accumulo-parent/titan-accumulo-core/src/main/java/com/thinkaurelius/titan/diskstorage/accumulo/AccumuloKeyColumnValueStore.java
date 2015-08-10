@@ -59,6 +59,7 @@ public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
 
     @Override
     public EntryList getSlice(KeySliceQuery query, StoreTransaction txh) throws BackendException {
+//        logger.debug("In getSlice(KeySliceQuery), query == {}", query);
         ScanConfig cfg = new ScanConfig(colFam).onlyLatestVersion();
         BatchScanner scanner = storeManager.newBatchScanner(cfg);
         try {
@@ -88,6 +89,7 @@ public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
 
     @Override
     public Map<StaticBuffer, EntryList> getSlice(List<StaticBuffer> keys, SliceQuery query, StoreTransaction txh) throws BackendException {
+        logger.debug("In getSlice(SliceQuery), query == {}", query);
         ScanConfig cfg = new ScanConfig(colFam)
                 .onlyLatestVersion()
                 .setCqSlice(query)
@@ -120,6 +122,7 @@ public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
 
     @Override
     public void mutate(StaticBuffer key, List<Entry> additions, List<StaticBuffer> deletions, StoreTransaction txh) throws BackendException {
+//        logger.debug("In mutate, writing {} additions, {} deletions", additions.size(), deletions.size());
         Map<StaticBuffer, KCVMutation> mutations = ImmutableMap.of(key, new KCVMutation(additions, deletions));
         storeManager.mutateMany(ImmutableMap.of(storeName, mutations), txh);
     }
@@ -131,12 +134,14 @@ public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
 
     @Override
     public KeyIterator getKeys(KeyRangeQuery query, StoreTransaction txh) throws BackendException {
+        logger.debug("In getKeys(KeyRangeQuery), query == {}", query);
         return doKeyIteratorQuery(query.getKeyStart().as(StaticBuffer.ARRAY_FACTORY),
                 query.getKeyEnd().as(StaticBuffer.ARRAY_FACTORY), query);
     }
 
     @Override
     public KeyIterator getKeys(SliceQuery query, StoreTransaction txh) throws BackendException {
+        logger.debug("In getKeys(SliceQuery), query == {}", query);
         return doKeyIteratorQuery(null, null, query);
     }
 
