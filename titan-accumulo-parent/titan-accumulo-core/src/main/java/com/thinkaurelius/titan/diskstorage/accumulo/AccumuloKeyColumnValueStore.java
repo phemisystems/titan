@@ -41,6 +41,11 @@ import java.util.SortedMap;
 
 import static com.thinkaurelius.titan.diskstorage.accumulo.AccumuloStoreManager.ScanConfig;
 
+/**
+ * KCVS implementation backed by Apache Accumulo. Delegates to the AccumuloStoreManager for write operations.
+ * A "store" maps to a single column family and locality group in Accumulo, so all operations on this store are
+ * performed on the same column family.
+ */
 public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
 
     private static final Logger logger = LoggerFactory.getLogger(AccumuloKeyColumnValueStore.class);
@@ -57,6 +62,14 @@ public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
         this.entryGetter = new AccumuloGetter(storeManager.getMetaDataSchema(storeName));
     }
 
+    /**
+     * A KeySliceQuery appears to be a range of column qualifiers for a single logical row. Looking at the HBase
+     * implementation, it seems to be only interested in the latest version of the matching keys.
+     * @param query Query to get results for
+     * @param txh   ignored
+     * @return A list of all matching entries. Note that the full response will be held in memory.
+     * @throws BackendException if the query could not be performed.
+     */
     @Override
     public EntryList getSlice(KeySliceQuery query, StoreTransaction txh) throws BackendException {
         logger.trace("In getSlice(KeySliceQuery), query == {}", query);
@@ -87,6 +100,14 @@ public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
         }
     }
 
+    /**
+     * A slice query is a range of column qualifiers for a selection of logical rows.
+     * @param keys  List of keys
+     * @param query Slicequery specifying matching entries
+     * @param txh   Transaction
+     * @return A list of all matching entries. Note that the entire resultset will be held in memory.
+     * @throws BackendException
+     */
     @Override
     public Map<StaticBuffer, EntryList> getSlice(List<StaticBuffer> keys, SliceQuery query, StoreTransaction txh) throws BackendException {
         ScanConfig cfg = new ScanConfig(colFam)
@@ -119,6 +140,17 @@ public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
         }
     }
 
+    /**
+     * Writes the provided additions and deletions to Accumulo.
+     * @param key       the key (row id) under which the columns in {@code additions} and
+     *                  {@code deletions} will be written
+     * @param additions the list of Entry instances representing column-value pairs to
+     *                  create under {@code key}, or null to add no column-value pairs
+     * @param deletions the list of columns to delete from {@code key}, or null to
+     *                  delete no columns
+     * @param txh       ignored.
+     * @throws BackendException
+     */
     @Override
     public void mutate(StaticBuffer key, List<Entry> additions, List<StaticBuffer> deletions, StoreTransaction txh) throws BackendException {
         if (logger.isTraceEnabled()) {

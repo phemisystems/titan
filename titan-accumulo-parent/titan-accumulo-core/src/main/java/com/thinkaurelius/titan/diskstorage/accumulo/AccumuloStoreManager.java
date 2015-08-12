@@ -74,6 +74,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+/**
+ * Coordinates reading and writing data to the Apache Accumulo distributed key-value store.
+ */
 public class AccumuloStoreManager extends DistributedStoreManager implements KeyColumnValueStoreManager,
         CustomizeStoreKCVSManager {
 
@@ -137,6 +140,14 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
         openStores = new ConcurrentHashMap<String, AccumuloKeyColumnValueStore>();
     }
 
+    /**
+     * A limited set of Accumulo-specific configuration parameters are declared as ConfigOptions and can be specified
+     * in the Titan config file - see the AccumuloConfiguration class for more information. The full set of Accumulo
+     * client params can be specified in a separate config file referenced by the CLIENT_CONF_FILE option.
+     * @param storageConfig the Titan storage configuration
+     * @return an Accumulo client configuration
+     * @throws PermanentBackendException if there was an error loading the configuration.
+     */
     private ClientConfiguration loadClientConfig(Configuration storageConfig) throws PermanentBackendException {
         ClientConfiguration clientConf;
         String clientConfFile = storageConfig.get(AccumuloConfiguration.CLIENT_CONF_FILE);
@@ -172,6 +183,11 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
         return clientConf;
     }
 
+    /**
+     * Returns the deployment type. Following the precedent of HBase, returns Deployment.LOCAL if any of the keyspace
+     * is kept on a coresident tablet server.
+     * @return the deployment type.
+     */
     @Override
     public Deployment getDeployment() {
         List<KeyRange> local;
@@ -189,6 +205,15 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
         return openDatabase(name, Integer.MAX_VALUE);
     }
 
+    /**
+     * Defines a new store on the underlying accumulo table. Ensures that the store name maps to a locality group
+     * on the accumulo table - note that the benefits of the locality group will not be realized until the table is
+     * compacted, which should be invoked manually.
+     * @param longName Store name (== column family name, == locality group name)
+     * @param ttlInSeconds TTL for the entries in this {@link KeyColumnValueStore}
+     * @return the new store, or the existing store if one has already been created for the given name.
+     * @throws BackendException
+     */
     @Override
     public KeyColumnValueStore openDatabase(String longName, int ttlInSeconds) throws BackendException {
         AccumuloKeyColumnValueStore store = openStores.get(longName);
@@ -296,6 +321,13 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
         }
     }
 
+    /**
+     * Converts Titan mutations to Accumulo mutations.
+     * @param mutations Titan mutations, organized by store name (column family) then by key (row id)
+     * @param putTimestamp timestamp to use for creations/modifications
+     * @param delTimestamp timestamp to use for deletions
+     * @return Accumulo mutations, one per row id (key)
+     */
     private Collection<Mutation> convertMutations(Map<String, Map<StaticBuffer, KCVMutation>> mutations, final long putTimestamp, final long delTimestamp) {
         Map<StaticBuffer, Mutation> accMutByTitanKey = new HashMap<StaticBuffer, Mutation>();
         for (Map.Entry<String, Map<StaticBuffer, KCVMutation>> mutsForStore: mutations.entrySet()) {
@@ -481,6 +513,12 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
                 clientConf);
     }
 
+    /**
+     * Creates a new connector which can communicate with Accumulo. The connector itself doesn't need to be closed but
+     * the scanners and writers it produces do need to be closed.
+     * @return a new Accumulo connector
+     * @throws BackendException if the connector couldn't be created.
+     */
     private Connector newConnector() throws BackendException {
         try {
             return accInstance.getConnector(this.username, new PasswordToken(this.password));
@@ -508,6 +546,9 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
         }
     }
 
+    /**
+     * Convenience class for figuring out which iterators belong on a scan, and in what order.
+     */
     static class ScanConfig {
         private boolean onlyLatestVersion;
         private Text colFam;
