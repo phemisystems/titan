@@ -115,7 +115,8 @@ public enum ReflectiveConfigOptionLoader {
             "com.thinkaurelius.titan.graphdb.database.idassigner.VertexIDAssigner",
             //"com.thinkaurelius.titan.graphdb.TestMockIndexProvider",
             //"com.thinkaurelius.titan.graphdb.TestMockLog",
-            "com.thinkaurelius.titan.diskstorage.berkeleyje.BerkeleyJEStoreManager");
+            "com.thinkaurelius.titan.diskstorage.berkeleyje.BerkeleyJEStoreManager",
+            "com.thinkaurelius.titan.diskstorage.accumulo.AccumuloConfiguration");
 
         Timer t = new Timer(Timestamps.MILLI);
         t.start();

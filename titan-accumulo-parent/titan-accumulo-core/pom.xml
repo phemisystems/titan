@@ -23,11 +23,6 @@
     
     <dependencies>
         <dependency>
-            <groupId>com.thinkaurelius.titan</groupId>
-            <artifactId>titan-core</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.apache.accumulo</groupId>
             <artifactId>accumulo-core</artifactId>
             <version>${accumulo.version}</version>
@@ -68,16 +63,15 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>jline</groupId>
+            <artifactId>jline</artifactId>
+            <version>2.11</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.thinkaurelius.titan</groupId>
             <artifactId>titan-lucene</artifactId>
             <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- this appears to be a kludge for intelliJ... take it out! -->
-        <dependency>
-            <groupId>com.esotericsoftware.kryo</groupId>
-            <artifactId>kryo</artifactId>
-            <version>2.22</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

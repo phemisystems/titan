@@ -1,6 +1,5 @@
 package com.thinkaurelius.titan.diskstorage.accumulo;
 
-import com.google.common.util.concurrent.Uninterruptibles;
 import com.thinkaurelius.titan.core.PropertyKey;
 import com.thinkaurelius.titan.core.TitanFactory;
 import com.thinkaurelius.titan.core.TitanGraph;
@@ -16,6 +15,7 @@ import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -23,7 +23,6 @@ import org.junit.Test;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertTrue;
 
@@ -31,22 +30,20 @@ public class AccumuloBasicOpsTest {
 
   private static MiniAccumuloCluster mac;
   private TitanGraph g;
-  private GraphDatabaseConfiguration cfg;
 
   @BeforeClass
   public static void setupClass() throws Exception {
-//    Path macPath = Files.createTempDirectory("mac");
-//    System.out.println("MAC running at " + macPath);
-//    MiniAccumuloConfig macCfg = new MiniAccumuloConfig(macPath.toFile(), "secret");
-//    macCfg.setZooKeeperPort(2181);
-//    mac = new MiniAccumuloCluster(macCfg);
-//    mac.start();
-//    Uninterruptibles.sleepUninterruptibly(10, TimeUnit.SECONDS);
+    Path macPath = Files.createTempDirectory("mac");
+    System.out.println("MAC running at " + macPath);
+    MiniAccumuloConfig macCfg = new MiniAccumuloConfig(macPath.toFile(), "secret");
+    macCfg.setZooKeeperPort(2181);
+    mac = new MiniAccumuloCluster(macCfg);
+    mac.start();
   }
 
   @AfterClass
   public static void tearDownClass() throws Exception {
-//    mac.stop();
+    mac.stop();
   }
 
   @Before
@@ -92,15 +89,11 @@ public class AccumuloBasicOpsTest {
   }
 
   private static TitanGraph newGraphFromMac() throws Exception {
-//    MiniAccumuloConfig macCfg = mac.getConfig();
+    MiniAccumuloConfig macCfg = mac.getConfig();
     Configuration cfg = new BaseConfiguration();
-//    cfg.addProperty("storage.accumulo.ext.instance.zookeeper.host", "localhost:" + macCfg.getZooKeeperPort());
-//    cfg.addProperty("storage.accumulo.ext.instance.name", macCfg.getInstanceName());
-//    cfg.addProperty("storage.password", macCfg.getRootPassword());
-
-    cfg.addProperty("storage.accumulo.ext.instance.zookeeper.host", "localhost:2181");
-    cfg.addProperty("storage.accumulo.ext.instance.name", "testInstance");
-    cfg.addProperty("storage.password", "secret");
+    cfg.addProperty("storage.accumulo.ext.instance.zookeeper.host", "localhost:" + macCfg.getZooKeeperPort());
+    cfg.addProperty("storage.accumulo.ext.instance.name", macCfg.getInstanceName());
+    cfg.addProperty("storage.password", macCfg.getRootPassword());
 
     cfg.addProperty("storage.username", "root");
     cfg.addProperty("storage.backend", "accumulo");
