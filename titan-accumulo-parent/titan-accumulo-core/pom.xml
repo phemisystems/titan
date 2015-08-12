@@ -13,12 +13,6 @@
     <properties>
         <accumulo.version>1.7.0</accumulo.version>
         <hadoop.version>2.2.0</hadoop.version>
-<!--  
-        <hadoop.profile>2.0</hadoop.profile>
-        <hbase096.version.base>0.96.1.1</hbase096.version.base>
-        <jruby.version>1.6.8</jruby.version>
-        <top.level.basedir>${project.parent.parent.basedir}</top.level.basedir>
--->
     </properties>
     
     <dependencies>
@@ -62,12 +56,12 @@
             <version>${accumulo.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>jline</groupId>
-            <artifactId>jline</artifactId>
-            <version>2.11</version>
-            <scope>test</scope>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>jline</groupId>-->
+            <!--<artifactId>jline</artifactId>-->
+            <!--<version>2.11</version>-->
+            <!--<scope>test</scope>-->
+        <!--</dependency>-->
         <dependency>
             <groupId>com.thinkaurelius.titan</groupId>
             <artifactId>titan-lucene</artifactId>
