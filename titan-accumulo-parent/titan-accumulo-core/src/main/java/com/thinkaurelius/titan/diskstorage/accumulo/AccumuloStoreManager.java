@@ -1,7 +1,6 @@
 package com.thinkaurelius.titan.diskstorage.accumulo;
 
 import com.google.common.base.Joiner;
-import com.google.common.util.concurrent.Uninterruptibles;
 import com.thinkaurelius.titan.diskstorage.BackendException;
 import com.thinkaurelius.titan.diskstorage.BaseTransactionConfig;
 import com.thinkaurelius.titan.diskstorage.Entry;
@@ -10,8 +9,6 @@ import com.thinkaurelius.titan.diskstorage.StaticBuffer;
 import com.thinkaurelius.titan.diskstorage.TemporaryBackendException;
 import com.thinkaurelius.titan.diskstorage.common.DistributedStoreManager;
 import com.thinkaurelius.titan.diskstorage.configuration.ConfigElement;
-import com.thinkaurelius.titan.diskstorage.configuration.ConfigNamespace;
-import com.thinkaurelius.titan.diskstorage.configuration.ConfigOption;
 import com.thinkaurelius.titan.diskstorage.configuration.Configuration;
 import com.thinkaurelius.titan.diskstorage.keycolumnvalue.CustomizeStoreKCVSManager;
 import com.thinkaurelius.titan.diskstorage.keycolumnvalue.KCVMutation;
@@ -74,7 +71,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -85,49 +81,6 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
 
     private static final int MAX_PARTITION_ATTEMPTS = 100;
     private static final int AVG_PARTITION_RETRY_MS = 100;
-
-    public static final ConfigNamespace ACCUMULO_NS =
-            new ConfigNamespace(GraphDatabaseConfiguration.STORAGE_NS, "accumulo", "Accumulo storage options");
-
-    public static final ConfigOption<Boolean> SKIP_SCHEMA_CHECK =
-            new ConfigOption<Boolean>(ACCUMULO_NS, "skip-schema-check",
-                    "Assume that Titan's Accumulo table already exists. " +
-                    "When this is true, Titan will not check for the existence of its table, " +
-                    "nor will it attempt to create it under any circumstances.",
-                    ConfigOption.Type.MASKABLE, false);
-
-    public static final ConfigOption<String> ACCUMULO_TABLE =
-            new ConfigOption<String>(ACCUMULO_NS, "table",
-                    "The name of the table Titan will use. When " + ConfigElement.getPath(SKIP_SCHEMA_CHECK) +
-                    " is false, Titan will automatically create this table if it does not already exist.",
-                    ConfigOption.Type.LOCAL, "titan");
-
-    private static final String CLIENT_CONF_FILE_DEFAULT = "-DEFAULT-";
-
-    public static final ConfigOption<String> CLIENT_CONF_FILE =
-            new ConfigOption<String>(ACCUMULO_NS, "client-conf-file",
-                    "The path to Accumulo's client.conf file, containing the settings necessary to connect to the " +
-                    "Accumulo cluster. If not set, will follow rules defined by Accumulo's ClientConfiguration.loadDefault",
-                    ConfigOption.Type.LOCAL, CLIENT_CONF_FILE_DEFAULT);
-
-    public static final ConfigOption<String> AUTHS =
-            new ConfigOption<String>(ACCUMULO_NS, "scan-auths",
-                    "Comma-separated list of authorizations to use when querying Accumulo. The authorizations, if " +
-                    "specified, must be a subset of the user's authorizations.", ConfigOption.Type.LOCAL, String.class);
-
-    public static final ConfigOption<Integer> NUM_SCAN_THREADS =
-            new ConfigOption<Integer>(ACCUMULO_NS, "num-scan-threads",
-                    "Number of threads to use when creating a batch scanner to query Accumulo. Default is 5.",
-                    ConfigOption.Type.LOCAL, 5);
-
-    public static final ConfigOption<Long> TABLE_TTL =
-            new ConfigOption<Long>(ACCUMULO_NS, "table-ttl",
-                    "Time-to-live (millis) defined at the table level. Determines how long KV pairs may exist in the " +
-                            "table before they're expunged. TTLs may be also be defined per-CF. These TTLs are " +
-                            "enforced at scan time.", ConfigOption.Type.LOCAL, Long.MAX_VALUE);
-
-    public static final ConfigNamespace ACCUMULO_CONFIGURATION_NAMESPACE =
-            new ConfigNamespace(ACCUMULO_NS, "ext", "Overrides for client.conf options", true);
 
     private static final int PRIORITY_STORE_TTL = 20;
     private static final int PRIORITY_LATEST_VERSION = 25;
@@ -160,14 +113,15 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
 
     public AccumuloStoreManager(Configuration storageConfig) throws BackendException {
         super(storageConfig, PORT_DEFAULT);
-        tableName = storageConfig.get(ACCUMULO_TABLE);
-        skipSchemaCheck = storageConfig.get(SKIP_SCHEMA_CHECK);
+        tableName = storageConfig.get(AccumuloConfiguration.ACCUMULO_TABLE);
+        skipSchemaCheck = storageConfig.get(AccumuloConfiguration.SKIP_SCHEMA_CHECK);
         clientConf = loadClientConfig(storageConfig);
         accInstance = new ZooKeeperInstance(clientConf);
-        logger.debug("StorageConfig.has(AUTHS) ? " + storageConfig.has(AUTHS));
-        scanAuths = storageConfig.has(AUTHS) ? new Authorizations(storageConfig.get(AUTHS).split(",")) : Authorizations.EMPTY;
-        numScanThreads = storageConfig.get(NUM_SCAN_THREADS);
-        tableTtl = storageConfig.get(TABLE_TTL);
+        scanAuths = storageConfig.has(AccumuloConfiguration.AUTHS) ?
+                new Authorizations(storageConfig.get(AccumuloConfiguration.AUTHS).split(",")) :
+                Authorizations.EMPTY;
+        numScanThreads = storageConfig.get(AccumuloConfiguration.NUM_SCAN_THREADS);
+        tableTtl = storageConfig.get(AccumuloConfiguration.TABLE_TTL);
         storeTtls = new HashMap<String,IteratorSetting>();
         if (!hasAuthentication()) {
             throw new PermanentBackendException("AccumuloStoreManager requires authentication, set " +
@@ -185,8 +139,8 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
 
     private ClientConfiguration loadClientConfig(Configuration storageConfig) throws PermanentBackendException {
         ClientConfiguration clientConf;
-        String clientConfFile = storageConfig.get(CLIENT_CONF_FILE);
-        if (CLIENT_CONF_FILE_DEFAULT.equals(clientConfFile)) {
+        String clientConfFile = storageConfig.get(AccumuloConfiguration.CLIENT_CONF_FILE);
+        if (AccumuloConfiguration.CLIENT_CONF_FILE_DEFAULT.equals(clientConfFile)) {
             logger.debug("No client config file specified, looking for defaults");
             clientConf = ClientConfiguration.loadDefault();
         } else {
@@ -196,9 +150,9 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
                 throw new PermanentBackendException("Unable to load client configuration from " + clientConfFile, ce);
             }
         }
-        logger.debug("Overlaying custom properties from " + ACCUMULO_CONFIGURATION_NAMESPACE);
+        logger.debug("Overlaying custom properties from " + AccumuloConfiguration.ACC_CONF);
         // Overlay custom properties
-        Map<String,Object> configSub = storageConfig.getSubset(ACCUMULO_CONFIGURATION_NAMESPACE);
+        Map<String,Object> configSub = storageConfig.getSubset(AccumuloConfiguration.ACC_CONF);
         for (Map.Entry<String,Object> entry : configSub.entrySet()) {
             logger.info("Accumulo configuration: setting {}={}", entry.getKey(), entry.getValue());
             if (entry.getValue() != null) {
@@ -517,7 +471,7 @@ public class AccumuloStoreManager extends DistributedStoreManager implements Key
         if (config.has(GraphDatabaseConfiguration.STORAGE_PORT)) {
             logger.warn("The configuration property {} is ignored for Accumulo. Set {} in client.conf or {}.{} in Titan's configuration file.",
                     ConfigElement.getPath(GraphDatabaseConfiguration.STORAGE_PORT),
-                    ClientConfiguration.ClientProperty.INSTANCE_ZK_HOST, ConfigElement.getPath(ACCUMULO_CONFIGURATION_NAMESPACE),
+                    ClientConfiguration.ClientProperty.INSTANCE_ZK_HOST, ConfigElement.getPath(AccumuloConfiguration.ACC_CONF),
                     ClientConfiguration.ClientProperty.INSTANCE_ZK_HOST);
         }
     }

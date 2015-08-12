@@ -59,13 +59,13 @@ public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
 
     @Override
     public EntryList getSlice(KeySliceQuery query, StoreTransaction txh) throws BackendException {
-//        logger.debug("In getSlice(KeySliceQuery), query == {}", query);
+        logger.trace("In getSlice(KeySliceQuery), query == {}", query);
         ScanConfig cfg = new ScanConfig(colFam).onlyLatestVersion();
         BatchScanner scanner = storeManager.newBatchScanner(cfg);
         try {
             Text row = new Text(query.getKey().as(StaticBuffer.ARRAY_FACTORY));
-            Text cqStart = new Text(query.getSliceStart().asByteBuffer().array());
-            Text cqEnd = new Text(query.getSliceEnd().asByteBuffer().array());
+            Text cqStart = new Text(query.getSliceStart().as(StaticBuffer.ARRAY_FACTORY));
+            Text cqEnd = new Text(query.getSliceEnd().as(StaticBuffer.ARRAY_FACTORY));
             Range r;
             try {
                 r = new Range(new Key(row, colFam, cqStart), true, new Key(row, colFam, cqEnd), false);
@@ -89,7 +89,6 @@ public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
 
     @Override
     public Map<StaticBuffer, EntryList> getSlice(List<StaticBuffer> keys, SliceQuery query, StoreTransaction txh) throws BackendException {
-        logger.debug("In getSlice(SliceQuery), query == {}", query);
         ScanConfig cfg = new ScanConfig(colFam)
                 .onlyLatestVersion()
                 .setCqSlice(query)
@@ -122,7 +121,9 @@ public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
 
     @Override
     public void mutate(StaticBuffer key, List<Entry> additions, List<StaticBuffer> deletions, StoreTransaction txh) throws BackendException {
-//        logger.debug("In mutate, writing {} additions, {} deletions", additions.size(), deletions.size());
+        if (logger.isTraceEnabled()) {
+            logger.trace("In mutate, writing {} additions, {} deletions", additions.size(), deletions.size());
+        }
         Map<StaticBuffer, KCVMutation> mutations = ImmutableMap.of(key, new KCVMutation(additions, deletions));
         storeManager.mutateMany(ImmutableMap.of(storeName, mutations), txh);
     }
@@ -134,14 +135,14 @@ public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
 
     @Override
     public KeyIterator getKeys(KeyRangeQuery query, StoreTransaction txh) throws BackendException {
-        logger.debug("In getKeys(KeyRangeQuery), query == {}", query);
+        logger.trace("In getKeys(KeyRangeQuery), query == {}", query);
         return doKeyIteratorQuery(query.getKeyStart().as(StaticBuffer.ARRAY_FACTORY),
                 query.getKeyEnd().as(StaticBuffer.ARRAY_FACTORY), query);
     }
 
     @Override
     public KeyIterator getKeys(SliceQuery query, StoreTransaction txh) throws BackendException {
-        logger.debug("In getKeys(SliceQuery), query == {}", query);
+        logger.trace("In getKeys(SliceQuery), query == {}", query);
         return doKeyIteratorQuery(null, null, query);
     }
 
@@ -282,7 +283,7 @@ public class AccumuloKeyColumnValueStore implements KeyColumnValueStore {
                 SortedMap<Key, Value> currentRowDecoded = WholeRowIterator.decodeRow(currentRow.getKey(), currentRow.getValue());
                 currentRowEntries = getEntryList(currentRow.getKey().getRowData().toArray(),
                         currentRowDecoded, limit);
-                return StaticArrayBuffer.of(currentRow.getKey().getColumnFamily().copyBytes());
+                return StaticArrayBuffer.of(currentRow.getKey().getRow().copyBytes());
             } catch (IOException ioe) {
                 throw new RuntimeException("Error processing row " + currentRow.getKey(), ioe);
             }

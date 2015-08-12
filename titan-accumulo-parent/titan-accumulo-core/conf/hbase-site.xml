@@ -34,11 +34,11 @@
 <configuration>
     <property>
         <name>hbase.rootdir</name>
-        <value>file:///Users/rweeks/projects/titan/titan-accumulo-parent/titan-accumulo-core/target/hbase-root</value>
+        <value>file:///home/rweeks/dev/titan/titan-accumulo-parent/titan-accumulo-core/target/hbase-root</value>
     </property>
     <property>
         <name>hbase.zookeeper.property.dataDir</name>
-        <value>/Users/rweeks/projects/titan/titan-accumulo-parent/titan-accumulo-core/target/zk-data</value>
+        <value>/home/rweeks/dev/titan/titan-accumulo-parent/titan-accumulo-core/target/zk-data</value>
     </property>
     <property>
         <name>zookeeper.session.timeout</name>
